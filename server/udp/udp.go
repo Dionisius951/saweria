@@ -1,4 +1,3 @@
-// udp_server.go
 package udp
 
 import (
@@ -6,49 +5,49 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"server/websocket" // Import package websocket
 )
 
-// Struktur donasi
+// Struktur Donasi
 type Donation struct {
-	Message string `json:"message"`
+	Target  string `json:"target"`
 	Amount  int    `json:"amount"`
+	Message string `json:"message"`
 	From    string `json:"from"`
 }
 
-// Channel untuk mengirim donasi ke WebSocket
-var donationChannel = make(chan Donation)
-
+// Fungsi untuk menangani koneksi UDP
 func HandleUDPConnection() {
 	// Membuka UDP server pada port 8081
-	addr := net.UDPAddr{
+	udpAddr := net.UDPAddr{
 		Port: 8081,
 		IP:   net.ParseIP("127.0.0.1"),
 	}
-	conn, err := net.ListenUDP("udp", &addr)
+	conn, err := net.ListenUDP("udp", &udpAddr)
 	if err != nil {
 		log.Fatal("Error starting UDP server:", err)
 	}
 	defer conn.Close()
 
-	fmt.Println("Listening for UDP donations on", addr.String())
+	log.Println("Listening for UDP donations on", udpAddr.String())
 
 	buffer := make([]byte, 1024)
-
 	for {
 		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
-			log.Println("Error receiving UDP message:", err)
+			log.Println("Error reading from UDP:", err)
 			continue
 		}
 
-		var donation Donation
+		var donation websocket.Donation
 		err = json.Unmarshal(buffer[:n], &donation)
 		if err != nil {
 			log.Println("Error decoding JSON:", err)
 			continue
 		}
 
-		// Mengirim donasi ke channel yang terhubung dengan WebSocket
-		donationChannel <- donation
+		fmt.Println(string(n))
+		// Kirim donasi ke WebSocket berdasarkan target
+		websocket.Broadcast <- donation
 	}
 }

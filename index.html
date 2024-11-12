@@ -13,13 +13,16 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center my-4">Donation</h1>
+        <h1 class="text-center my-4">Donasi</h1>
+        <h3 class="text-center my-4 " id="username"></h3>
         <div id="donation-cards" class="row"></div>
     </div>
 
     <script>
         const Query = new URLSearchParams(window.location.search);
         const username = Query.get("username")
+        const User = document.getElementById('username')
+        User.innerHTML = username
         const ws = new WebSocket(`ws://localhost:8080/donate?username=${username}`);
 
         ws.onmessage = (event) => {
@@ -29,9 +32,9 @@
                 <div class="col-md-4">
                     <div class="card mb-4">
                         <div class="card-body">
-                            <h5 class="card-title">Donasi dari: ${donation.from}</h5>
+                            <h5 class="card-title">Dari : ${donation.from}</h5>
                             <p class="card-text">${donation.message}</p>
-                            <p class="card-text">Jumlah: Rp${donation.amount}</p>
+                            <p class="card-text">Jumlah : Rp${donation.amount}</p>
                         </div>
                     </div>
                 </div>
@@ -40,7 +43,7 @@
         };
 
         ws.onclose = () => {
-            alert("Connection Closed");
+            alert("Koneksi Terputus");
         };
     </script>
 </body>

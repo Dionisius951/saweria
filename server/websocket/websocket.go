@@ -1,10 +1,6 @@
 package websocket
 
 import (
-	"encoding/json"
-	"flag"
-	// "encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -12,88 +8,90 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var clients = make(map[string]*websocket.Conn)
-var mu sync.Mutex
-
-// Channel untuk komunikasi antara UDP dan WebSocket
-var donationChannel = make(chan Donation)
-
+// Struktur untuk Donasi
 type Donation struct {
-	Message string `json:"message"`
+	Target  string `json:"target"`
 	Amount  int    `json:"amount"`
+	Message string `json:"message"`
 	From    string `json:"from"`
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
-}
+var (
+	Clients   = make(map[string]*websocket.Conn) // Memetakan username ke WebSocket client
+	Broadcast = make(chan Donation)              // Channel untuk mengirimkan donasi
+	mu        sync.Mutex
+)
 
-func wsHandler(w http.ResponseWriter, r *http.Request) {
-	// Upgrade HTTP connection ke WebSocket
+// Fungsi untuk menghubungkan WebSocket
+func handleConnection(w http.ResponseWriter, r *http.Request) {
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Print("Error upgrading to WebSocket:", err)
+		log.Println(err)
 		return
 	}
 	defer conn.Close()
 
-	// Mendapatkan username dari query parameter
+	// Ambil username dari query parameter
 	username := r.URL.Query().Get("username")
 	if username == "" {
 		username = "Anonymous"
 	}
 
-	// Menyimpan koneksi WebSocket untuk username
+	// Tambahkan klien dengan username ke daftar
 	mu.Lock()
-	clients[username] = conn
+	Clients[username] = conn
 	mu.Unlock()
 
-	fmt.Printf("User %s connected\n", username)
+	log.Printf("%s has joined the server\n", username)
 
-	// Mendengarkan pesan WebSocket dari client (ini opsional, tergantung kebutuhan)
+	// Terima pesan dari klien
 	for {
 		_, _, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Printf("User %s disconnected\n", username)
+			log.Println("Client disconnected:", err)
 			mu.Lock()
-			delete(clients, username)
+			delete(Clients, username)
 			mu.Unlock()
 			break
 		}
 	}
 }
 
-// Fungsi untuk mengirim pesan donasi ke WebSocket client yang sesuai
-func handleDonations() {
-	for donation := range donationChannel {
-		mu.Lock()
-		client, exists := clients[donation.From]
-		mu.Unlock()
-		if exists {
-			data, _ := json.Marshal(donation)
-			err := client.WriteMessage(websocket.TextMessage, data)
-			if err != nil {
-				log.Println("Error sending message to WebSocket:", err)
-				client.Close()
-				mu.Lock()
-				delete(clients, donation.From)
-				mu.Unlock()
-			}
-		} else {
-			log.Printf("No WebSocket client found for username: %s\n", donation.From)
+// Fungsi untuk mengirim donasi ke target tertentu
+func sendDonationToTarget(donation Donation) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Cari klien yang sesuai dengan target donasi
+	client, exists := Clients[donation.Target]
+	if exists {
+		err := client.WriteJSON(donation)
+		if err != nil {
+			log.Println("Error sending donation to target:", err)
+			client.Close()
+			delete(Clients, donation.Target)
 		}
+	} else {
+		log.Println("Client not found for target:", donation.Target)
 	}
 }
 
+// Fungsi untuk memulai WebSocket server
 func StartWebSocket() {
-	flag.Parse()
-	log.SetFlags(0)
-	// http.HandleFunc("/echo", echo)
-	http.HandleFunc("/donate", wsHandler)
-	go handleDonations()
+	http.HandleFunc("/", handleConnection)
 
-	fmt.Println("server running at :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// Jalankan server WebSocket
+	log.Println("WebSocket server running at :8080")
+	go http.ListenAndServe(":8080", nil)
 
+	// Mendengarkan channel untuk donasi yang masuk
+	for donation := range Broadcast {
+		sendDonationToTarget(donation)
+	}
 }
-	
