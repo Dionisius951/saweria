@@ -130,7 +130,7 @@ func StartTcp() {
 	}
 	defer listener.Close()
 
-	fmt.Println("TCP server listening on 127.0.0.1:9090")
+	fmt.Println("Server TCP Running On Port 9090")
 
 	for {
 		conn, err := listener.Accept()
