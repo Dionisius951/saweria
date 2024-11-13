@@ -1,11 +1,13 @@
 package main
+
 import (
+	"server/tcp-udp"
 	"server/websocket"
-	"server/udp"
 )
 
 func main() {
 	go websocket.StartWebSocket()
-	go udp.HandleUDPConnection()
-	select{}
+	go tcp_udp.HandleUDPConnection()
+	go tcp_udp.StartTcp()
+	select {}
 }

@@ -12,10 +12,16 @@ import (
 
 // Struktur untuk Donasi
 type Donation struct {
+	Type    string `json:"type"`
 	Target  string `json:"target"`
 	Amount  int    `json:"amount"`
 	Message string `json:"message"`
 	From    string `json:"from"`
+}
+
+type BalanceRequest struct {
+	Username string `json:"username"`
+	Balance  int    `json:"balance"`
 }
 
 func main() {
@@ -39,8 +45,6 @@ func main() {
 	defer conn.Close()
 
 	for {
-		// clear screen
-		fmt.Print("\033[H\033[2J")
 		// Menampilkan menu utama
 		fmt.Println("|-----------------|")
 		fmt.Println("|      Menu       |")
@@ -59,25 +63,25 @@ func main() {
 		}
 		switch option {
 		case 1:
-			// Kirim donasi
 			SendDonation(conn, username)
 		case 2:
-			// Cek saldo (fungsi ini bisa diimplementasikan nanti)
-			SendDonation(conn, username)
+			CheckBalance(conn, username)
 		case 3:
+			// clear screen
+			fmt.Print("\033[H\033[2J")
 			// Keluar dari program
-			fmt.Println("Terima kasih telah menggunakan program.")
+			fmt.Println("Terima kasih!")
 			os.Exit(0)
 		}
 
-		// Menanyakan apakah ingin kembali ke menu utama
-		fmt.Print("Apakah Anda ingin kembali ke menu utama? (y/n): ")
-		var choice string
-		_, err = fmt.Scanln(&choice)
-		if err != nil || strings.ToLower(choice) != "y" {
-			fmt.Println("Terima kasih telah menggunakan program.")
-			break
-		}
+		// // Menanyakan apakah ingin kembali ke menu utama
+		// fmt.Print("Apakah Anda ingin kembali ke menu utama? (y/n): ")
+		// var choice string
+		// _, err = fmt.Scanln(&choice)
+		// if err != nil || strings.ToLower(choice) != "y" {
+		// 	fmt.Println("Terima kasih telah menggunakan program.")
+		// 	break
+		// }
 	}
 }
 
@@ -85,6 +89,7 @@ func main() {
 func SendDonation(conn *net.UDPConn, username string) {
 	// clear screen
 	fmt.Print("\033[H\033[2J")
+
 	inputReader := bufio.NewReader(os.Stdin)
 
 	// Membaca target penerima donasi
@@ -107,6 +112,7 @@ func SendDonation(conn *net.UDPConn, username string) {
 	message = strings.TrimSpace(message)
 
 	donation := Donation{
+		Type:    "donation",
 		Target:  target,
 		Amount:  amount,
 		Message: message,
@@ -125,5 +131,47 @@ func SendDonation(conn *net.UDPConn, username string) {
 		log.Fatal("Error sending UDP message:", err)
 	}
 
-	fmt.Println("Donasi terkirim ke target:", donation.Target)
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("Error membaca respons dari server:", err)
+		return
+	}
+
+	// Menampilkan pesan dari server
+	response := string(buf[:n])
+	fmt.Println(response)
+
+}
+
+// Fungsi untuk mengecek saldo
+func CheckBalance(conn *net.UDPConn, username string) {
+	// clear screen
+	fmt.Print("\033[H\033[2J")
+	// Membuat request untuk memeriksa saldo
+	request := Donation{Type: "balance", From: username}
+
+	// Encode data request menjadi JSON
+	data, err := json.Marshal(request)
+	if err != nil {
+		log.Fatal("Error encoding JSON:", err)
+	}
+
+	// Kirim request ke server UDP
+	_, err = conn.Write(data)
+	if err != nil {
+		log.Fatal("Error sending UDP message:", err)
+	}
+
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("Error membaca respons dari server:", err)
+		return
+	}
+
+	// Menampilkan pesan dari server
+	response := string(buf[:n])
+	fmt.Println(response)
+
 }
