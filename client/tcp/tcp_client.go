@@ -39,6 +39,8 @@ func main() {
 		case 1:
 			sendTopUpRequest(username)
 		case 2:
+			// clear screen
+			fmt.Print("\033[H\033[2J")
 			fmt.Println("Terima Kasih!")
 			return
 		default:

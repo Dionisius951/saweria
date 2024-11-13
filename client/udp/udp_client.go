@@ -73,15 +73,6 @@ func main() {
 			fmt.Println("Terima kasih!")
 			os.Exit(0)
 		}
-
-		// // Menanyakan apakah ingin kembali ke menu utama
-		// fmt.Print("Apakah Anda ingin kembali ke menu utama? (y/n): ")
-		// var choice string
-		// _, err = fmt.Scanln(&choice)
-		// if err != nil || strings.ToLower(choice) != "y" {
-		// 	fmt.Println("Terima kasih telah menggunakan program.")
-		// 	break
-		// }
 	}
 }
 
