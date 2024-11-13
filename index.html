@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donasi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #donation-cards {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center my-4">Donasi</h1>
+        <h3 class="text-center my-4 " id="username"></h3>
+        <div id="donation-cards" class="row"></div>
+    </div>
+
+    <script>
+        const Query = new URLSearchParams(window.location.search);
+        const username = Query.get("username")
+        const User = document.getElementById('username')
+        User.innerHTML = username
+        const ws = new WebSocket(`ws://localhost:8080/donate?username=${username}`);
+
+        ws.onmessage = (event) => {
+            const donation = JSON.parse(event.data);
+            console.log(event.data)
+            const cardHTML = `
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Dari : ${donation.from}</h5>
+                            <p class="card-text"> Pesan : ${donation.message}</p>
+                            <p class="card-text">Jumlah : Rp${donation.amount}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById("donation-cards").insertAdjacentHTML("beforeend", cardHTML);
+        };
+
+        ws.onclose = () => {
+            alert("Koneksi Terputus");
+        };
+    </script>
+</body>
+</html>
